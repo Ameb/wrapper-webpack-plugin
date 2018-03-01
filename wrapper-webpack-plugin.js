@@ -8,6 +8,7 @@ var ModuleFilenameHelpers = require("webpack/lib/ModuleFilenameHelpers");
  * @param {string|function} [args.header]
  * @param {string|function} [args.footer]
  * @param {string|RegExp} [args.test]
+ * @param {boolean} [args.runAfterOptimize=false]
  * @constructor
  */
 function WrapperPlugin(args) {
@@ -18,18 +19,25 @@ function WrapperPlugin(args) {
 	this.header = args.hasOwnProperty('header') ? args.header : '';
 	this.footer = args.hasOwnProperty('footer') ? args.footer : '';
 	this.test = args.hasOwnProperty('test') ? args.test : '';
+	this.runAfterOptimize = args.hasOwnProperty('runAfterOptimize') ? args.runAfterOptimize : false;
 }
 
 function apply(compiler) {
 	var header = this.header;
 	var footer = this.footer;
 	var tester = {test: this.test};
+	var runAfterOptimize = this.runAfterOptimize
 
 	compiler.plugin('compilation', function (compilation) {
-		compilation.plugin('optimize-chunk-assets', function (chunks, done) {
-			wrapChunks(compilation, chunks, footer, header);
-			done();
-		})
+		if (runAfterOptimize)
+			compilation.plugin('after-optimize-chunk-assets', function (chunks) {
+				wrapChunks(compilation, chunks, footer, header);
+			})
+		else
+			compilation.plugin('optimize-chunk-assets', function (chunks, done) {
+				wrapChunks(compilation, chunks, footer, header);
+				done();
+			})
 	});
 
 	function wrapFile(compilation, fileName) {
